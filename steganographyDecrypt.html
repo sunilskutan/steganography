@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSB Steganography Decoder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            max-width:500px;
+            margin: 0 auto;
+	    background: url('img12.jpg') no-repeat center center fixed;
+            background-size: cover;
+        }
+        .container {
+            width: 90%;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h3 {
+            text-align: center;
+            color: #003300;
+            margin-top: 0;
+        }
+        .image-preview {
+            width: 100%;
+            height: 200px;
+            border: 1px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 10px 0;
+            overflow: hidden;
+	    font-size:12px;
+	    color: #00cc00;
+        }
+        .image-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #retrievedMessage {
+            color: red;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #f8f8f8;
+            border-radius: 4px;
+            word-wrap: break-word;
+        }
+        .file-input {
+            width: 100%;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h3>Decode Hidden Message</h3>
+        
+        <input type="file" id="encodedImageInput" accept="image/png" class="file-input">
+        <div class="image-preview" id="displayEncodedImage">Encoded Image will appear here</div>
+        <button onclick="decodeLSB()">Decode Message</button>
+        <p id="retrievedMessage"><font color="#00cc00" size="2px">Retrieved Message will appear here</font></p>
+    </div>
+
+    <script>
+        // Function to resize image for preview while maintaining aspect ratio
+        function resizeImageForPreview(imgElement, maxWidth, maxHeight) {
+            const aspectRatio = imgElement.width / imgElement.height;
+            let newWidth = imgElement.width;
+            let newHeight = imgElement.height;
+
+            if (newWidth > maxWidth) {
+                newWidth = maxWidth;
+                newHeight = newWidth / aspectRatio;
+            }
+
+            if (newHeight > maxHeight) {
+                newHeight = maxHeight;
+                newWidth = newHeight * aspectRatio;
+            }
+
+            return {
+                width: newWidth,
+                height: newHeight
+            };
+        }
+        
+        function decodeLSB() {
+            const fileInput = document.getElementById("encodedImageInput");
+            if (!fileInput.files.length) {
+                alert("Please upload an encoded PNG image first.");
+                return;
+            }
+            if (!fileInput.files[0].type.includes("png")) {
+                alert("Only PNG images are allowed.");
+                return;
+            }
+            
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            const retrievedMessageElem = document.getElementById("retrievedMessage");
+            const displayEncodedImage = document.getElementById("displayEncodedImage");
+            
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const img = new Image();
+                img.onload = function () {
+                    // Preview the encoded image with proper sizing
+                    const dimensions = resizeImageForPreview(img, 200, 200);
+                    displayEncodedImage.innerHTML = `<img src='${event.target.result}' width='${dimensions.width}' height='${dimensions.height}'>`;
+                    
+                    // Set up canvas for decoding
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const pixels = imageData.data;
+                    let binaryMessage = "";
+                    
+                    for (let i = 0; i < pixels.length; i += 4) {
+                        binaryMessage += (pixels[i] & 1).toString();
+                    }
+                    
+                    let chars = binaryMessage.match(/.{1,8}/g) || [];
+                    let message = "";
+                    for (let char of chars) {
+                        if (char === "00000000") break;
+                        message += String.fromCharCode(parseInt(char, 2));
+                    }
+                    
+                    //retrievedMessageElem.textContent = `Retrieved Message:     ${message}`;
+		     retrievedMessageElem.innerHTML = `<span style="font-size: 10px;">Retrieved Message:</span> ${message}`;
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        }
+    </script>
+</body>
+</html>
